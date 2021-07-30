@@ -1,0 +1,74 @@
+#+TITLE: Design Notes
+
+It is becoming clear that a /language-based/ approach is good for specifying something and the constructing it.
+
+* Syntax
+
+Syntax comes from the Tech Report 'A Linear Decomposition of Multiparty Sessions for Safe Distributed Programming' (DTRS12-2).
+
+We have used De Bruijn indexing to make recursion variables nameless.
+We shall see how far that takes us.
+
+** Intrinsic Properties
+
+We are trying to make as many structural restrictions intrinsic as possible.
+
+We have decided that one cannot send messages to one's self.
+Specifying =Choice= requires that both sender and receiver are unique.
+This means that we cannot use Idris' /proof search/ to construct these predicates and thus we cannot provide functions to 'derive' send and receive from =Choice=.
+Instead, we provide a top-level specification language that we 'check' that builds types.
+
+** On representing message types
+
+We have made our types indexed by the type of messages and roles.
+For Plain Merge, we cannot use first class types, and must use a /Universe Pattern/ to constrain and reason about types.
+
+* Projection
+
+  There are two sources for projection.
+
+** Plain Merge Projection
+
+   The POPL '08 Paper /Multi-Party Asynchronous Session Types/.
+   When projecting a =Choice= in which the projected role is not involved, projection occurs when all choices are equal.
+
+** Full Merge Projection
+
+ The Tech Report 'A Linear Decomposition of Multiparty Sessions for Safe Distributed Programming' (DTRS12-2).
+ Which projection utilises a =merge= operation.
+
+
+* Merge and Equality during Projection
+
+Idris2 supports first class types, types can be computed, types can even be pattern matched!
+Pattern matching on types is, unfortunatly, restricted in what one can do.
+When matching on types we do not know /a priori/ all the types we need.
+Take for example the following function, =same=, that declares if two types are equal:
+
+#+begin_src idris
+same : (a,b : Type) -> Bool
+same Int Int = True
+same _   _   = False
+#+end_src
+
+This compiles and works as designed, but it is not an exhaustive set of patterns.
+As such there are no =Eq= instances for things of type =Type=.
+
+We could even try to build a decidable instance for types.
+For example:
+
+#+begin_src idris
+sameDec : (a,b : Type) -> Dec (Equal a b)
+sameDec Int Int = Yes Refl
+sameDec a b = No rhs
+  where
+    rhs : a = b -> Void
+    rhs Refl = ?rhs_1
+#+end_src
+
+Similary, we do not have enough evidence to *show* that =a= and =b= are not equal.
+
+Thus, if we *need* to project Global types using /Equality Projection/ (i.e. properly) within Idris2 we need to be able to perform structural equality on our Local Type definitions.
+If we use Type to denote message types, then this is impossible and we need to use an interpretation approach to allow for structural equality checking of Local Types.
+
+Merge projection might be a better way forward.

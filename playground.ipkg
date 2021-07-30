@@ -1,0 +1,49 @@
+package playground
+
+-- -- [ Meta Information ]
+
+brief = "Playing with Session Types"
+
+version = 0.0.0
+
+authors     = "Jan de Muijnck-Hughes"
+maintainers = "Jan de Muijnck-Hughes"
+
+-- homepage =
+-- sourceloc =
+-- bugtracker =
+
+-- -- [ Important Files ]
+
+license = "LICENSE"
+readme  = "README.org"
+
+-- -- [ Configurations ]
+
+-- sourcedir =
+
+-- depends =
+-- opts =
+
+-- -- [ Manifest ]
+
+modules = Sessions.Meta
+
+        , Sessions.Global
+        , Sessions.Global.Involved
+
+        , Sessions.Local
+        , Sessions.Local.Same
+
+        , Sessions.Projection.Error
+        , Sessions.Projection.Plain
+
+-- -- [ Executable Details ]
+
+-- main file (i.e. file to load at REPL)
+-- main =
+
+-- name of executable
+-- executable =
+
+-- [ EOF ]

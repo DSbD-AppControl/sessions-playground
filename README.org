@@ -1,0 +1,5 @@
+#+TITLE: Playing with Session Types
+
+We are interested in how to realise Multi-Party Session Types within Idris.
+
+This repository contains our musings.
