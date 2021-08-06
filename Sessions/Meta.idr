@@ -28,4 +28,9 @@ DecEq ChoiceTy where
   decEq SELECT SELECT = Yes Refl
 
 
+public export
+DecEq : (typeR, typeL, typeR : Type)
+     -> Type
+DecEq a b c = (DecEq a, DecEq b, DecEq c)
+
 -- [ EOF ]

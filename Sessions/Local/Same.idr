@@ -52,9 +52,8 @@ notCCSels f Refl = f Refl
 mutual
 
   export
-  same : DecEq role
-      => DecEq msg
-      => (a,b : Local role msg rs g)
+  same : DecEq role label msg
+      => (a,b : Local role label msg rs g)
              -> Dec (Equal a b)
   same End End = Yes Refl
   same End (Choice ty whom selections)
@@ -118,41 +117,60 @@ mutual
       = No (notCCTy contra)
 
   namespace Pair
-    notSameBSecond : {ma : msg} -> (la = lb -> Void) -> (ma, la) = (ma, lb) -> Void
-    notSameBSecond f Refl = f Refl
 
-    notSameBFirst : {la : _} -> {lb : _} -> (ma = mb -> Void) -> (ma, la) = (mb, lb) -> Void
-    notSameBFirst f Refl = f Refl
+    notPairSameLabel : {am, bm : _}
+                    -> {ab, bb : _}
+                    -> (al = bl -> Void) -> (al, (am, ab)) = (bl, (bm, bb)) -> Void
+    notPairSameLabel f Refl = f Refl
+
+    notPairSameMsg : {al : _}
+                  -> {ab, bb : _}
+                  -> (am = bm -> Void) -> (al, (am, ab)) = (al, (bm, bb)) -> Void
+    notPairSameMsg f Refl = f Refl
+
+    notPairSameRest : {al : _}
+                   -> {am : _}
+                   -> (ab = bb -> Void) -> (al, (am, ab)) = (al, (am, bb)) -> Void
+    notPairSameRest f Refl = f Refl
 
     export
-    same : DecEq role
-        => DecEq msg
-        => (x,y : Pair msg (Local role msg rs g))
+    same : DecEq role label msg
+        => (x,y : Branch role label msg rs g)
                -> Dec (Equal x y)
-    same (ma, la) (mb, lb) with (decEq ma mb)
-      same (ma, la) (ma, lb) | (Yes Refl) with (same la lb)
-        same (ma, lb) (ma, lb) | (Yes Refl) | (Yes Refl)
-          = Yes Refl
-        same (ma, la) (ma, lb) | (Yes Refl) | (No contra)
-          = No (notSameBSecond contra)
-      same (ma, la) (mb, lb) | (No contra)
-        = No (notSameBFirst contra)
+    same (al, (am, ab)) (bl, (bm, bb)) with (decEq al bl)
+      same (al, (am, ab)) (al, (bm, bb)) | (Yes Refl) with (decEq am bm)
+        same (al, (am, ab)) (al, (am, bb)) | (Yes Refl) | (Yes Refl) with (same ab bb)
+          same (al, (am, ab)) (al, (am, ab)) | (Yes Refl) | (Yes Refl) | (Yes Refl)
+            = Yes Refl
+          same (al, (am, ab)) (al, (am, bb)) | (Yes Refl) | (Yes Refl) | (No contra)
+            = No (notPairSameRest contra)
+        same (al, (am, ab)) (al, (bm, bb)) | (Yes Refl) | (No contra)
+          = No (notPairSameMsg contra)
+      same (al, (am, ab)) (bl, (bm, bb)) | (No contra)
+        = No (notPairSameLabel contra)
 
   namespace List
+
     notSamesRightEmpty : [] = x :: xs -> Void
     notSamesRightEmpty Refl impossible
 
-    notSamesHead : {xs, ys : List (msg, Local roel msg rs g)} -> (x = y -> Void) -> (::) x xs = (::) y ys -> Void
+    notSamesHead : {xs, ys : Branches' roel label msg rs g}
+                -> (x = y -> Void)
+                -> (::) x xs = (::) y ys
+                -> Void
     notSamesHead f Refl = f Refl
 
-    notSamesTail : {xs, ys : List (msg, Local roel msg rs g)} -> (xs = ys -> Void) -> x :: xs = x :: ys -> Void
+    notSamesTail : {xs, ys : Branches' roel label msg rs g}
+                -> (xs = ys -> Void)
+                -> x :: xs = x :: ys
+                -> Void
     notSamesTail f Refl = f Refl
 
     export
-    same : DecEq role
-        => DecEq msg
-        => (as, bs : List (msg, Local role msg rs g))
+    same : DecEq role label msg
+        => (as, bs : Branches' role label msg rs g)
                   -> Dec (Equal as bs)
+
     same [] [] = Yes Refl
     same [] (x :: xs) = No (notSamesRightEmpty)
     same (x :: xs) [] = No (negEqSym notSamesRightEmpty)
@@ -165,7 +183,9 @@ mutual
       same (x :: xs) (y :: ys) | (No contra)
         = No (notSamesHead contra)
 
+
   namespace List1
+
     notSames1Head : (a = b -> Void) -> a ::: as = b ::: bs -> Void
     notSames1Head f Refl = f Refl
 
@@ -173,10 +193,10 @@ mutual
     notSames1Tail f Refl = f Refl
 
     export
-    same : DecEq role
-        => DecEq msg
-        => (as, bs : List1 (msg, Local role msg rs g))
+    same : DecEq role label msg
+        => (as, bs : Branches role label msg rs g)
                   -> Dec (Equal as bs)
+
     same (a ::: as) (b ::: bs) with (same a b)
       same (a ::: as) (a ::: bs) | (Yes Refl) with (same as bs)
         same (a ::: bs) (a ::: bs) | (Yes Refl) | (Yes Refl)
@@ -186,84 +206,5 @@ mutual
       same (a ::: as) (b ::: bs) | (No contra)
         = No (notSames1Head contra)
 
-namespace List
-  public export
-  data AllSame : (c  : (msg, Local role msg rs g))
-              -> (cs : List (msg, Local role msg rs g))
-              -> (ne : NonEmpty cs)
-                    -> Type
-    where
-      Base : (prf : Equal c d)
-                 -> AllSame c (d :: Nil) IsNonEmpty
-
-      Extend : (prf   : Equal c d)
-            -> (prfNE : NonEmpty rest)
-            -> (later : AllSame c     rest  prfNE)
-                     -> AllSame c (d::rest) IsNonEmpty
-
-  notEmpty : NonEmpty [] -> Void
-  notEmpty IsNonEmpty impossible
-
-  nonEmpty : (xs : List a) -> Dec (NonEmpty xs)
-  nonEmpty [] = No notEmpty
-  nonEmpty (x :: xs) = Yes IsNonEmpty
-
-  data Shape : (xs : List a) -> Type where
-    IsCons : Shape (x::xs)
-    IsNil  : Shape Nil
-
-  shape : (xs : List a) -> Shape xs
-  shape [] = IsNil
-  shape (x :: xs) = IsCons
-
-  notSameHead : (c = x -> Void)
-             -> AllSame c (x :: xs) IsNonEmpty -> Void
-  notSameHead f (Base prf) = f prf
-  notSameHead f (Extend prf prfNE later) = f prf
-
-
-  notSameRest : (AllSame x (y :: xs) IsNonEmpty -> Void)
-              -> AllSame x (x :: (y :: xs)) IsNonEmpty
-              -> Void
-  notSameRest f (Extend Refl IsNonEmpty later) = f later
-
-  export
-  allSame : DecEq role
-         => DecEq msg
-         => (c     :      (msg, Local role msg rs g))
-         -> (cs    : List (msg, Local role msg rs g))
-         -> (prfNE : NonEmpty cs)
-                  -> Dec (AllSame c cs prfNE)
-  allSame c (x :: xs) IsNonEmpty with (same c x)
-    allSame x (x :: xs) IsNonEmpty | (Yes Refl) with (shape xs)
-      allSame x (x :: (y :: xs)) IsNonEmpty | (Yes Refl) | IsCons with (allSame x (y::xs) IsNonEmpty)
-        allSame x (x :: (y :: xs)) IsNonEmpty | (Yes Refl) | IsCons | (Yes prf) = Yes (Extend Refl IsNonEmpty prf)
-        allSame x (x :: (y :: xs)) IsNonEmpty | (Yes Refl) | IsCons | (No contra)
-          = No (notSameRest contra)
-      allSame x (x :: []) IsNonEmpty | (Yes Refl) | IsNil
-        = Yes (Base Refl)
-
-    allSame c (x :: xs) IsNonEmpty | (No contra)
-      = No (notSameHead contra)
-
-namespace List1
-  public export
-  data AllSame : (cs : List1 (msg, Local role msg rs g))
-              -> Type
-    where
-      All : AllSame c (c::cs) IsNonEmpty -> AllSame (c ::: cs)
-
-  notAllSame : (AllSame h (h :: t) IsNonEmpty -> Void) -> AllSame (h ::: t) -> Void
-  notAllSame f (All x) = f x
-
-  export
-  allSame : DecEq role
-         => DecEq msg
-         => (cs : List1 (msg, Local role msg rs g))
-               -> Dec (AllSame cs)
-  allSame (head ::: tail) with (allSame head (head :: tail) IsNonEmpty)
-    allSame (head ::: tail) | (Yes prf) = Yes (All prf)
-    allSame (head ::: tail) | (No contra)
-      = No (notAllSame contra)
 
 -- [ EOF ]

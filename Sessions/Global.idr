@@ -17,25 +17,49 @@ import Sessions.Meta
 
 %default total
 
+
 public export
-data Global : (role, msg : Type)
+data Global : (role, label, msg : Type)
            -> (rvars : List Ty)
            -> (type  : Ty)
                    -> Type
   where
-    End : Global role msg rs G
+    End : Global typeR typeL typeM rs G
 
-    Var : Elem R rs -> Global role msg rs R
+    Var : Elem R rs -> Global typeR typeL typeM rs R
 
-    T : Global role msg rs R
+    T : Global typeR typeL typeM rs R
 
-    Rec : Global role msg (R::rs) R
-       -> Global role msg     rs  R
+    Rec : Global typeR typeL typeM (R::rs) R
+       -> Global typeR typeL typeM     rs  R
 
-    Choice : (sender, receiver : role)
-          -> (prf : Not (sender = receiver))
-          -> (choices : List1 (msg, Global role msg rs g))
-                     -> Global role msg rs g
+    Choice : (sender, receiver : typeR)
+          -> (prf              : Not (sender = receiver))
+          -> (choices          : List1 (typeL, typeM, Global typeR typeL typeM rs g))
+                              -> Global typeR typeL typeM rs g
 
+public export
+Branch : (role, label, msg : Type)
+      -> (rvars : List Ty)
+      -> (type  : Ty)
+               -> Type
+Branch role label msg rvars type
+  = (label, msg, Global role label msg rvars type)
+
+public export
+Branches : (role, label, msg : Type)
+        -> (rvars : List Ty)
+        -> (type  : Ty)
+                 -> Type
+Branches role label msg rvars type
+  = List1 (Branch role label msg rvars type)
+
+public export
+Branches' : (role, label, msg : Type)
+         -> (rvars : List Ty)
+         -> (type  : Ty)
+                  -> Type
+Branches' role label msg rvars type
+  = List (Branch role label msg rvars type)
 
 -- [ EOF ]

@@ -40,7 +40,7 @@ relates p s r contra with (decEq p s)
 
 public export
 data Involved : role
-             -> Global role msg rs g
+             -> Global role label msg rs g
              -> Type
   where
     Choice : Relates role s r
@@ -51,10 +51,11 @@ data Involved : role
     Rec : Involved role (Rec g)
 
 export
-involved : DecEq role
-          => (p    : role)
-          -> (term : Global role msg rs g)
-                  -> Involved p term
+involved : {role : Type}
+         -> DecEq role
+         => (p    : role)
+         -> (term : Global role label msg rs g)
+                 -> Involved p term
 involved p End      = End
 involved p (Var x) = Var
 involved p T       = T

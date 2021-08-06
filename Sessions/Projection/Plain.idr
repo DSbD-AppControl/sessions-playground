@@ -18,66 +18,152 @@ import Sessions.Global.Involved
 
 import Sessions.Local
 import Sessions.Local.Same
+import Sessions.Local.Same.All
 
 import public Sessions.Projection.Error
 
 %default total
 
+
 mutual
-  public export
-  projects : DecEq role
-          => DecEq msg
-          => (whom : role)
-          -> (type : List (Pair msg (Global role msg rs g)))
-                  -> Either Error (List (Pair msg (Local role msg rs g)))
-  projects whom []
-    = pure Nil
-  projects whom ((type, x) :: xs)
-    = do x' <- project whom x
-         xs' <- projects whom xs
-         pure ((type, x') :: xs')
 
-  public export
-  projects1 : DecEq role
-           => DecEq msg
-           => (whom : role)
-           -> (type : List1 (Pair msg (Global role msg rs g)))
-                   -> Either Error (List1 (Pair msg (Local role msg rs g)))
-  projects1 whom ((type, x) ::: tail)
-    = do x' <- project whom x
-         xs' <- projects whom tail
-         pure ((type, x') ::: xs')
+  namespace Term
+    public export
+    data Project : (role  : typeR)
+                -> (termG : Global typeR typeL typeM rs g)
+                -> (termL : Local  typeR typeL typeM rs g)
+                        -> Type
+      where
+        End : Project whom End End
 
-  public export
-  project : DecEq role
-         => DecEq msg
-         => (whom : role)
-         -> (type : Global role msg rs g)
-                 -> Either Error (Local  role msg rs g)
-  project whom End = Right End
-  project whom (Var x) = Right (Var x)
-  project whom T = Right T
-  project whom (Rec x) with (project whom x)
-    project whom (Rec x) | (Right prf) = Right (Rec prf)
-    project whom (Rec x) | (Left err) = Left err
-  project whom (Choice s r notsr cs) with (relates whom s r notsr)
-    project whom (Choice s r notsr cs) | (Sends prfS) with (projects1 whom cs)
+        Var : Project whom (Var idx) (Var idx)
 
-      project whom (Choice s r notsr cs) | (Sends prfS) | (Left err) = Left err
-      project whom (Choice s r notsr cs) | (Sends prfS) | (Right x)
-        = Right (Choice SELECT r x)
+        T   : Project whom T T
 
-    project whom (Choice s r notsr cs) | (Recvs prfR) with (projects1 whom cs)
-      project whom (Choice s r notsr cs) | (Recvs prfR) | (Left err) = Left err
-      project whom (Choice s r notsr cs) | (Recvs prfR) | (Right x)
-        = Right (Choice BRANCH s x)
+        Rec : Project whom x y
+           -> Project whom (Rec x) (Rec y)
 
-    project whom (Choice s r notsr cs) | (Skips prfSNot prfRNot) with (projects1 whom cs)
-      project whom (Choice s r notsr cs) | (Skips prfSNot prfRNot) | (Left err) = Left err
-      project whom (Choice s r notsr cs) | (Skips prfSNot prfRNot) | (Right x) with (List1.allSame x)
-        project whom (Choice s r notsr cs) | (Skips prfSNot prfRNot) | (Right ((t, c) ::: _)) | (Yes (All y))
-          = Right c
-        project whom (Choice s r notsr cs) | (Skips prfSNot prfRNot) | (Right x) | (No contra)
-          = Left InvalidBranch
+        ChoiceSelect : (prfS : whom = s)
+                    -> (ss   : List1.Project whom bs cs)
+
+                            -> Project whom (Choice        s r notsr bs)
+                                            (Choice SELECT   r       cs)
+
+        ChoiceBranch : (prfR : whom = r)
+                    -> (cs   : List1.Project whom bs bs')
+                            -> Project whom (Choice        s r notsr bs)
+                                            (Choice BRANCH s         bs')
+
+
+        ChoiceMerge : (prfWS : Not (whom = s))
+                   -> (prfWR : Not (whom = r))
+
+                   -> (ss    : List1.Project whom bs ((cl,cm,c):::cs))
+                   -> (prf   : All ((cl,cm,c):::cs))
+
+                            -> Project whom (Choice s r notsr bs)
+                                            c
+
+  namespace List
+
+    public export
+    data Project : (role : typeR)
+                -> (bs   : List (typeL, typeM, Global typeR typeL typeM rs g))
+                -> (bs'  : List (typeL, typeM, Local  typeR typeL typeM rs g))
+                        -> Type
+      where
+        Empty : Project whom Nil Nil
+        Ext : Term.Project whom         x               y
+           -> List.Project  whom             xs              ys
+           -> List.Project  whom ((xl,xm,x)::xs) ((xl,xm,y)::ys)
+
+  namespace List1
+
+    public export
+    data Project : (role : typeR)
+                -> (bs   : List1 (typeL, typeM, Global typeR typeL typeM rs g))
+                -> (bs'  : List1 (typeL, typeM, Local  typeR typeL typeM rs g))
+                        -> Type
+      where
+        Proj : List.Project  whom (b ::bs) (c ::cs)
+            -> List1.Project whom (b:::bs) (c:::cs)
+
+mutual
+  namespace Term
+
+    export
+    project : DecEq typeR typeL typeM
+           => (role  : typeR)
+           -> (termG : Global typeR typeL typeM rs g)
+                    -> Maybe (termL ** Project role termG termL)
+    project role End
+      = Just (MkDPair End End)
+    project role (Var x)
+      = Just (MkDPair (Var x) Var)
+    project role T
+      = Just (MkDPair T T)
+    project role (Rec x) with (project role x)
+      project role (Rec x) | (Just (MkDPair fst snd))
+        = Just (MkDPair (Rec fst) (Rec snd))
+
+      project role (Rec x) | Nothing
+        = Nothing
+
+    project role (Choice s r notSR cs) with (relates role s r notSR)
+      project role (Choice role r notSR cs) | (Sends Refl) with (project role cs)
+        project role (Choice role r notSR cs) | (Sends Refl) | Nothing
+          = Nothing
+        project role (Choice role r notSR cs) | (Sends Refl) | (Just (MkDPair cs' prf))
+          = Just (Choice SELECT r cs' ** ChoiceSelect Refl prf)
+
+      project role (Choice s role notSR cs) | (Recvs Refl) with (project role cs)
+        project role (Choice s role notSR cs) | (Recvs Refl) | Nothing
+          = Nothing
+        project role (Choice s role notSR cs) | (Recvs Refl) | (Just (MkDPair cs' prf))
+          = Just (Choice BRANCH s cs' ** ChoiceBranch Refl prf)
+
+      project role (Choice s r notSR ss) | (Skips prfSNot prfRNot) with (project role ss)
+        project role (Choice s r notSR ss) | (Skips prfSNot prfRNot) | Nothing
+          = Nothing
+        project role (Choice s r notSR ss) | (Skips prfSNot prfRNot) | (Just (MkDPair cs' prf)) with (allSame cs')
+          project role (Choice s r notSR ss) | (Skips prfSNot prfRNot) | (Just (MkDPair ((l, (m, c)) ::: cs) prf)) | (Yes (Yes x))
+            = Just (c ** ChoiceMerge prfSNot prfRNot prf (Yes x))
+          project role (Choice s r notSR ss) | (Skips prfSNot prfRNot) | (Just (MkDPair cs' prf)) | (No contra)
+            = Nothing
+
+
+  namespace List
+
+    export
+    project : DecEq typeR typeL typeM
+           => (role : typeR)
+           -> (bs   : List (typeL, typeM, Global typeR typeL typeM rs g))
+                   -> Maybe (bs' ** List.Project role bs bs')
+
+    project role []
+      = Just (MkDPair [] Empty)
+
+    project role ((xl,xm,x) :: xs) with (project role x)
+      project role ((xl,xm,x) :: xs) | (Just (MkDPair x' prf)) with (List.project role xs)
+        project role ((xl,xm,x) :: xs) | (Just (MkDPair x' prf)) | (Just (MkDPair xs' prfs))
+          = Just (MkDPair ((xl, (xm, x')) :: xs') (Ext prf prfs))
+        project role ((xl,xm,x) :: xs) | (Just (MkDPair x' prf)) | Nothing
+          = Nothing
+      project role ((xl,xm,x) :: xs) | Nothing
+        = Nothing
+
+
+  namespace List1
+
+    export
+    project : DecEq typeR typeL typeM
+           => (role  : typeR)
+           -> (termG : List1 (typeL, typeM, Global typeR typeL typeM rs g))
+                    -> Maybe (termL ** Project role termG termL)
+    project role (head ::: tail) with (List.project role (head::tail))
+      project role (head ::: tail) | (Just (MkDPair (x :: xs) prfs))
+        = Just (MkDPair (x ::: xs) (Proj prfs))
+      project role (head ::: tail) | Nothing
+        = Nothing
 
 -- [ EOF ]

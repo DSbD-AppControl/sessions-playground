@@ -34,9 +34,11 @@ modules = Sessions.Meta
 
         , Sessions.Local
         , Sessions.Local.Same
+        , Sessions.Local.Same.All
 
         , Sessions.Projection.Error
         , Sessions.Projection.Plain
+        , Sessions.Projection.Full
 
 -- -- [ Executable Details ]
 
