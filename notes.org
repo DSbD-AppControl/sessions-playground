@@ -72,3 +72,138 @@ Thus, if we *need* to project Global types using /Equality Projection/ (i.e. pro
 If we use Type to denote message types, then this is impossible and we need to use an interpretation approach to allow for structural equality checking of Local Types.
 
 Merge projection might be a better way forward.
+
+* Notes from 'Less Is More: Multiparty Session Types Revisited'
+** A Pi Calculus for Communication
+   #+begin_example
+
+   c,d ::= x       -- variables
+         | chan(p) -- channel with role `p`
+
+   P,Q ::= 0                                         -- Inaction
+         | P|Q                                       -- Composition
+         | new s in P                                -- restriction i.e. new channel
+         | selectOn c to q m<d> then P               -- select a branch
+         | branchOn c from q with {m_i(d_i) => P_i } -- offer a branch
+         | def D in P                                -- define a process
+         | call x on c                               -- call x with channel c
+         | error                                     -- error
+
+   D ::= let X(x) = P
+   #+end_example
+#+begin_example
+new chan in P_s | P_c | P_a
+  where
+    P_s = selectOn chan(s) to c cancel<NULL> then 0
+    P_c = branchOn chan(c) from s with { login(?)  => selectOn chan(c) to a password<"XYZ"> then O
+                                       , cancel(?) => selectOn chan(c) to a quit<?> then O
+                                       }
+    P_a = branchOn chan(a) from c with { password(y) => selectOn chan(a) to s auth<y="Secret"> then 0
+                                       , quit => 0
+                                       }
+#+end_example
+** Local Session Types
+
+   #+begin_example
+   B   ::= base types | S
+   S,T ::= BranchFrom p {m_{i}(B_{i}) => S_{i} | i > 0} -- Branching
+         | SelectTo   p {m_{i}(B_{i}) => S_{i} | i > 0} -- Selecting
+         | End                                          -- End
+         | Rec t => S                                   -- Recursion
+         | t                                            -- Rec Var
+   #+end_example
+
+** Typing A Pi Calculus for Communication
+*** Session Sub Typing
+    Given two local session types =S,T= we define the relation: =S isSubTypeOf T)= as follows:
+**** Branch
+     #+begin_example
+    Forall i in I where
+
+    S_{i} isSubTypeOf T_{i}
+    U_{i} isSubTypeOf V_{i}
+
+    -- [ Sub-& Branch ] ---
+
+    BranchFrom p {m_{i}(S_{i}) => U_{i}
+      isSubTypeOf
+    BranchFrom p {m_{i}(T_{i}) => V_{i}
+     #+end_example
+**** Select
+     #+begin_example
+     Forall i in I where
+
+     T_{i} isSubTypeOf S_{i}
+     U_{i} isSubTypeOf V_{i}
+
+     -- [ Sub-OPlus Select ] ---
+
+     SelectTo p {m_{i}(S_{i}) => U_{i}
+       isSubTypeOf
+     SelectTo p {m_{i}(T_{i}) => V_{i}
+     #+end_example
+
+     smaller type in selection will have less external choices...
+**** End
+     #+begin_example
+     -- [ Sub-End ] -----
+     end isSubTypeOf end
+     #+end_example
+**** Rec
+***** L
+      #+begin_example
+      subst (Rec t => S) for t in S
+        isSubTypeOf
+      T
+      -- [ Sub-Rec L ] ---------------
+      Rec t => S
+        isSubTypeOf
+      T
+      #+end_example
+***** R
+      #+begin_example
+      S
+        isSubTypeOf
+      subst (Rec t => T) for t in T
+      -- [ Sub-Rec L ] ---------------
+      S
+        isSubTypeOf
+      Rec t => T
+      #+end_example
+*** Typing Contexts
+**** Variables to Types
+     #+begin_example
+     theta : Theta ::= Empty | (::) theta (X : {S_n | n > 0})
+     #+end_example
+**** Channels to Types
+     #+begin_example
+     gamma : Gamma ::= Empty
+                     | (::) gamma (x       : S)
+                     | (::) gamma (chan(p) : S)
+     #+end_example
+**** Composition
+     #+begin_example
+     (++) : Gamma -> Gamma -> Gamma
+     #+end_example
+
+     If Union of =dom(G_1)= & =dom(G_2)= is Empty.
+
+     #+begin_example
+     s \ni gamma if forall p , chan(p) \ni dom(gamma)
+     #+end_example
+
+     #+begin_example
+     dom(gamma)={s} iff forall c \in doma(gamma) there exists a =p= such that c = chan(p)
+     #+end_example
+
+     #+begin_example
+     gamma_{1} isSubTypeOf gamma_{2}
+
+     iff
+
+     dom(gamma_1) = dom(gamma_2)
+
+     and
+
+     forall c \in dom(gamma_1), gamma_{1}(c) isSubTypeOf gamma_{2}(c)
+     #+end_example
