@@ -15,29 +15,20 @@ import Sessions.Local
 notEC : Local.End = Choice ty whom selections -> Void
 notEC Refl impossible
 
-notVVElem : (x = y -> Void) -> Local.Var x = Local.Var y -> Void
+notVVElem : (x = y -> Void) -> Local.Call x = Local.Call y -> Void
 notVVElem f Refl = f Refl
 
-notVT : Local.Var x = T -> Void
-notVT Refl impossible
-
-notVR : Local.Var x = Local.Rec y -> Void
+notVR : Local.Call x = Local.Rec y -> Void
 notVR Refl impossible
 
-notVC : Local.Var x = Choice ty whom selections -> Void
+notVC : Local.Call x = Choice ty whom selections -> Void
 notVC Refl impossible
-
-notTR : T = Local.Rec x -> Void
-notTR Refl impossible
 
 notRRBody : (x = y -> Void) -> Local.Rec x = Local.Rec y -> Void
 notRRBody f Refl = f Refl
 
 notRC : Local.Rec x = Choice ty whom selections -> Void
 notRC Refl impossible
-
-notTC : Local.T = Choice ty whom selections -> Void
-notTC Refl impossible
 
 notCCTy : (tyA = tyB -> Void) -> Local.Choice tyA a as = Local.Choice tyB b bs -> Void
 notCCTy f Refl = f Refl
@@ -59,32 +50,20 @@ mutual
   same End (Choice ty whom selections)
     = No (notEC)
 
-  same (Var x) (Var y) with (decEq x y)
-    same (Var x) (Var x) | (Yes Refl)
+  same (Call x) (Call y) with (decEq x y)
+    same (Call x) (Call x) | (Yes Refl)
       = Yes Refl
-    same (Var x) (Var y) | (No contra)
+    same (Call x) (Call y) | (No contra)
       = No (notVVElem contra)
 
 
-  same (Var x) T
-    = No (notVT)
-  same (Var x) (Rec y)
+  same (Call x) (Rec y)
     = No notVR
-  same (Var x) (Choice ty whom selections)
+  same (Call x) (Choice ty whom selections)
     = No notVC
-  same T (Var x)
-    = No (negEqSym notVT)
 
-  same T T = Yes Refl
-  same T (Rec x)
-    = No notTR
-  same T (Choice ty whom selections)
-    = No notTC
-
-  same (Rec x) (Var y)
+  same (Rec x) (Call y)
     = No (negEqSym notVR)
-  same (Rec x) T
-    = No (negEqSym notTR)
   same (Rec x) (Rec y) with (same x y)
     same (Rec x) (Rec x) | (Yes Refl) = Yes Refl
     same (Rec x) (Rec y) | (No contra)
@@ -95,10 +74,8 @@ mutual
 
   same (Choice ty whom selections) End
     = No (negEqSym notEC)
-  same (Choice ty whom selections) (Var x)
+  same (Choice ty whom selections) (Call x)
     = No (negEqSym notVC)
-  same (Choice ty whom selections) T
-    = No (negEqSym notTC)
   same (Choice ty whom selections) (Rec x)
     = No (negEqSym notRC)
 

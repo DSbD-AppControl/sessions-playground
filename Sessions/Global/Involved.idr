@@ -13,55 +13,30 @@ import Sessions.Global
 %default total
 
 public export
-data Relates : (p, s, r : role)
+data Involved : (p, s, r : role)
                         -> Type
   where
     Sends : (prfS : role = s)
-                 -> Relates role s r
+                 -> Involved role s r
 
     Recvs : (prfR : role = r)
-                 -> Relates role s r
+                 -> Involved role s r
 
     Skips : (prfSNot : Not (role = s))
          -> (prfRNot : Not (role = r))
-                    -> Relates role s r
+                    -> Involved role s r
 
 public export
-relates : DecEq role
-       => (p, s, r : role)
-       -> (contra  : Not (s = r))
-                  -> Relates p s r
-relates p s r contra with (decEq p s)
-  relates p p r contra | (Yes Refl) = (Sends Refl)
-  relates p s r contra | (No f) with (decEq p r)
-    relates p s p contra | (No f) | (Yes Refl) = (Recvs Refl)
-    relates p s r contra | (No f) | (No g) = (Skips f g)
+involved : DecEq role
+        => (p, s, r : role)
+        -> (contra  : Not (s = r))
+                   -> Involved p s r
+involved p s r contra with (decEq p s)
+  involved p p r contra | (Yes Refl) = (Sends Refl)
+  involved p s r contra | (No f) with (decEq p r)
+    involved p s p contra | (No f) | (Yes Refl) = (Recvs Refl)
+    involved p s r contra | (No f) | (No g) = (Skips f g)
 
 
-public export
-data Involved : role
-             -> Global role label msg rs g
-             -> Type
-  where
-    Choice : Relates role s r
-          -> Involved role (Choice s r sr cs)
-    End : Involved role End
-    Var : Involved role (Var x)
-    T   : Involved role T
-    Rec : Involved role (Rec g)
-
-export
-involved : {role : Type}
-         -> DecEq role
-         => (p    : role)
-         -> (term : Global role label msg rs g)
-                 -> Involved p term
-involved p End      = End
-involved p (Var x) = Var
-involved p T       = T
-involved p (Rec x) = Rec
-
-involved p (Choice s r not cs) with (relates p s r not)
-  involved p (Choice s r not cs) | prf = Choice prf
 
 -- [ EOF ]

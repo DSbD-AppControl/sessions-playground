@@ -37,6 +37,8 @@ modules = Sessions.Meta
         , Sessions.Local.Same.All
 
         , Sessions.Projection.Error
+
+        , Sessions.Projection
         , Sessions.Projection.Plain
         , Sessions.Projection.Full
 

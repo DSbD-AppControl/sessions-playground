@@ -26,9 +26,7 @@ data Global : (role, label, msg : Type)
   where
     End : Global typeR typeL typeM rs G
 
-    Var : Elem R rs -> Global typeR typeL typeM rs R
-
-    T : Global typeR typeL typeM rs R
+    Call : Elem R rs -> Global typeR typeL typeM rs R
 
     Rec : Global typeR typeL typeM (R::rs) R
        -> Global typeR typeL typeM     rs  R

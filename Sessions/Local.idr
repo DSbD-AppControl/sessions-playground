@@ -24,9 +24,7 @@ data Local : (role, label, msg  : Type)
   where
     End : Local typeR typeL typeM rs G
 
-    Var : Elem R rs -> Local typeR typeL typeM rs R
-
-    T : Local typeR typeL typeM rs R
+    Call : Elem R rs -> Local typeR typeL typeM rs R
 
     Rec : Local typeR typeL typeM (R::rs) R
        -> Local typeR typeL typeM     rs  R
